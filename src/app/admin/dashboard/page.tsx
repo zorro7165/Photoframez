@@ -125,6 +125,12 @@ export default function AdminDashboard() {
   const [formLoading, setFormLoading] = useState(false);
   const [formSuccess, setFormSuccess] = useState(false);
 
+  // Bulk ZIP import state
+  const [zipFile, setZipFile] = useState<File | null>(null);
+  const [zipLoading, setZipLoading] = useState(false);
+  const [zipSuccess, setZipSuccess] = useState<string | null>(null);
+  const [zipError, setZipError] = useState<string | null>(null);
+
   // Check auth session and fetch initial data
   useEffect(() => {
     async function checkAuth() {
@@ -221,6 +227,44 @@ export default function AdminDashboard() {
       console.error('Failed to add frame:', err);
     } finally {
       setFormLoading(false);
+    }
+  };
+
+  const handleZipUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!zipFile) return;
+
+    setZipLoading(true);
+    setZipSuccess(null);
+    setZipError(null);
+
+    const formData = new FormData();
+    formData.append('file', zipFile);
+
+    try {
+      const res = await fetch('/api/admin/upload-zip', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setZipSuccess(data.message);
+        setZipFile(null);
+        // Reset file input
+        const fileInput = document.getElementById('zip-file-input') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
+        
+        await refreshAllData();
+        setTimeout(() => setZipSuccess(null), 5000);
+      } else {
+        setZipError(data.error || 'Failed to import ZIP file.');
+      }
+    } catch (err) {
+      console.error('Failed to upload ZIP:', err);
+      setZipError('Connection error while uploading ZIP file.');
+    } finally {
+      setZipLoading(false);
     }
   };
 
@@ -538,90 +582,141 @@ export default function AdminDashboard() {
             <div className="space-y-8 animate-fade-in">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 
-                {/* Left: Add New Image Form (5 cols) */}
-                <div className="lg:col-span-5 bg-neutral-950 border border-neutral-800 p-6 rounded-2xl shadow-xs space-y-6">
-                  <div>
-                    <h3 className="text-base font-bold font-outfit text-white flex items-center gap-2">
-                      <Plus size={18} className="text-amber-500" />
-                      Add New Design
-                    </h3>
-                    <p className="text-xs text-neutral-500 mt-1">Upload canvas artwork. Frame ID will automatically generate sequentially.</p>
+                {/* Left Column: Forms (5 cols) */}
+                <div className="lg:col-span-5 space-y-6">
+                  {/* Single Frame Upload */}
+                  <div className="bg-neutral-950 border border-neutral-800 p-6 rounded-2xl shadow-xs space-y-6">
+                    <div>
+                      <h3 className="text-base font-bold font-outfit text-white flex items-center gap-2">
+                        <Plus size={18} className="text-amber-500" />
+                        Add New Design
+                      </h3>
+                      <p className="text-xs text-neutral-500 mt-1">Upload canvas artwork. Frame ID will automatically generate sequentially.</p>
+                    </div>
+
+                    {formSuccess && (
+                      <div className="p-3.5 bg-emerald-950/20 border border-emerald-900/40 text-emerald-400 text-xs rounded-xl flex items-center gap-2">
+                        <CheckCircle size={16} />
+                        Design uploaded and seeded successfully!
+                      </div>
+                    )}
+
+                    <form onSubmit={handleAddFrameSubmit} className="space-y-4 text-xs text-neutral-300">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Artwork Title</label>
+                        <input
+                          required
+                          type="text"
+                          value={newFrameForm.title}
+                          onChange={(e) => setNewFrameForm(prev => ({ ...prev, title: e.target.value }))}
+                          placeholder="e.g. Sunset Silhouette"
+                          className="w-full px-3.5 py-2.5 bg-neutral-900 border border-neutral-800 rounded-lg focus:border-amber-600 outline-hidden text-white font-semibold"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">HD Image URL</label>
+                        <input
+                          required
+                          type="url"
+                          value={newFrameForm.imageUrl}
+                          onChange={(e) => setNewFrameForm(prev => ({ ...prev, imageUrl: e.target.value }))}
+                          placeholder="Unsplash / Cloudinary image link"
+                          className="w-full px-3.5 py-2.5 bg-neutral-900 border border-neutral-800 rounded-lg focus:border-amber-600 outline-hidden text-white"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Category</label>
+                        <input
+                          required
+                          type="text"
+                          value={newFrameForm.category}
+                          onChange={(e) => setNewFrameForm(prev => ({ ...prev, category: e.target.value }))}
+                          placeholder="e.g. Nature, Abstract"
+                          className="w-full px-3.5 py-2.5 bg-neutral-900 border border-neutral-800 rounded-lg focus:border-amber-600 outline-hidden text-white"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Search Tags (Comma-separated)</label>
+                        <input
+                          type="text"
+                          value={newFrameForm.tags}
+                          onChange={(e) => setNewFrameForm(prev => ({ ...prev, tags: e.target.value }))}
+                          placeholder="e.g. sunset, orange, nature"
+                          className="w-full px-3.5 py-2.5 bg-neutral-900 border border-neutral-800 rounded-lg focus:border-amber-600 outline-hidden text-white"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Description</label>
+                        <textarea
+                          rows={3}
+                          value={newFrameForm.description}
+                          onChange={(e) => setNewFrameForm(prev => ({ ...prev, description: e.target.value }))}
+                          placeholder="Write a marketing description detailing color tones and styles."
+                          className="w-full px-3.5 py-2.5 bg-neutral-900 border border-neutral-800 rounded-lg focus:border-amber-600 outline-hidden text-white resize-none"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={formLoading}
+                        className="w-full py-3 bg-amber-600 hover:bg-amber-700 disabled:bg-neutral-850 text-white font-bold rounded-lg shadow-md transition"
+                      >
+                        {formLoading ? 'Saving...' : 'Add Artwork'}
+                      </button>
+                    </form>
                   </div>
 
-                  {formSuccess && (
-                    <div className="p-3.5 bg-emerald-950/20 border border-emerald-900/40 text-emerald-400 text-xs rounded-xl flex items-center gap-2">
-                      <CheckCircle size={16} />
-                      Design uploaded and seeded successfully!
-                    </div>
-                  )}
-
-                  <form onSubmit={handleAddFrameSubmit} className="space-y-4 text-xs text-neutral-300">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Artwork Title</label>
-                      <input
-                        required
-                        type="text"
-                        value={newFrameForm.title}
-                        onChange={(e) => setNewFrameForm(prev => ({ ...prev, title: e.target.value }))}
-                        placeholder="e.g. Sunset Silhouette"
-                        className="w-full px-3.5 py-2.5 bg-neutral-900 border border-neutral-800 rounded-lg focus:border-amber-600 outline-hidden text-white font-semibold"
-                      />
+                  {/* Bulk Import (ZIP File) */}
+                  <div className="bg-neutral-950 border border-neutral-800 p-6 rounded-2xl shadow-xs space-y-6">
+                    <div>
+                      <h3 className="text-base font-bold font-outfit text-white flex items-center gap-2">
+                        <ShoppingBag size={18} className="text-amber-500" />
+                        Bulk Import (ZIP Upload)
+                      </h3>
+                      <p className="text-xs text-neutral-500 mt-1">
+                        Select a ZIP file containing `.jpg` or `.png` wallpapers. They will be extracted, sequentially renamed (starting from the next frame number), added to the database, and synced locally.
+                      </p>
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">HD Image URL</label>
-                      <input
-                        required
-                        type="url"
-                        value={newFrameForm.imageUrl}
-                        onChange={(e) => setNewFrameForm(prev => ({ ...prev, imageUrl: e.target.value }))}
-                        placeholder="Unsplash / Cloudinary image link"
-                        className="w-full px-3.5 py-2.5 bg-neutral-900 border border-neutral-800 rounded-lg focus:border-amber-600 outline-hidden text-white"
-                      />
-                    </div>
+                    {zipSuccess && (
+                      <div className="p-3.5 bg-emerald-950/20 border border-emerald-900/40 text-emerald-400 text-xs rounded-xl flex items-center gap-2">
+                        <CheckCircle size={16} />
+                        {zipSuccess}
+                      </div>
+                    )}
 
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Category</label>
-                      <input
-                        required
-                        type="text"
-                        value={newFrameForm.category}
-                        onChange={(e) => setNewFrameForm(prev => ({ ...prev, category: e.target.value }))}
-                        placeholder="e.g. Nature, Abstract"
-                        className="w-full px-3.5 py-2.5 bg-neutral-900 border border-neutral-800 rounded-lg focus:border-amber-600 outline-hidden text-white"
-                      />
-                    </div>
+                    {zipError && (
+                      <div className="p-3.5 bg-rose-950/20 border border-rose-900/40 text-rose-400 text-xs rounded-xl">
+                        {zipError}
+                      </div>
+                    )}
 
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Search Tags (Comma-separated)</label>
-                      <input
-                        type="text"
-                        value={newFrameForm.tags}
-                        onChange={(e) => setNewFrameForm(prev => ({ ...prev, tags: e.target.value }))}
-                        placeholder="e.g. sunset, orange, nature"
-                        className="w-full px-3.5 py-2.5 bg-neutral-900 border border-neutral-800 rounded-lg focus:border-amber-600 outline-hidden text-white"
-                      />
-                    </div>
+                    <form onSubmit={handleZipUpload} className="space-y-4 text-xs text-neutral-300">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Select ZIP Archive</label>
+                        <input
+                          id="zip-file-input"
+                          required
+                          type="file"
+                          accept=".zip"
+                          onChange={(e) => setZipFile(e.target.files?.[0] || null)}
+                          className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-lg outline-hidden text-white"
+                        />
+                      </div>
 
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Description</label>
-                      <textarea
-                        rows={3}
-                        value={newFrameForm.description}
-                        onChange={(e) => setNewFrameForm(prev => ({ ...prev, description: e.target.value }))}
-                        placeholder="Write a marketing description detailing color tones and styles."
-                        className="w-full px-3.5 py-2.5 bg-neutral-900 border border-neutral-800 rounded-lg focus:border-amber-600 outline-hidden text-white resize-none"
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={formLoading}
-                      className="w-full py-3 bg-amber-600 hover:bg-amber-700 disabled:bg-neutral-850 text-white font-bold rounded-lg shadow-md transition"
-                    >
-                      {formLoading ? 'Saving...' : 'Add Artwork'}
-                    </button>
-                  </form>
+                      <button
+                        type="submit"
+                        disabled={zipLoading || !zipFile}
+                        className="w-full py-3 bg-amber-600 hover:bg-amber-700 disabled:bg-neutral-850 text-white font-bold rounded-lg shadow-md transition"
+                      >
+                        {zipLoading ? 'Uploading and Processing...' : 'Upload & Import ZIP'}
+                      </button>
+                    </form>
+                  </div>
                 </div>
 
                 {/* Right: Existing Catalog list (7 cols) */}
