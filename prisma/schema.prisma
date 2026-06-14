@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/client"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Image {
+  id           String   @id @default(uuid())
+  frameId      String   @unique @map("frame_id")
+  title        String
+  description  String
+  imageUrl     String   @map("image_url")
+  thumbnailUrl String   @map("thumbnail_url")
+  category     String
+  tags         String
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("images")
+}
+
+model Product {
+  id         String @id @default(uuid())
+  frameId    String @map("frame_id")
+  size       String
+  material   String
+  glassType  String @map("glass_type")
+  borderType String @map("border_type")
+  price      Float
+
+  @@map("products")
+}
+
+model Order {
+  id            String      @id @default(uuid())
+  orderNumber   String      @unique @map("order_number")
+  customerName  String      @map("customer_name")
+  phone         String
+  email         String
+  address       String
+  city          String
+  state         String
+  pincode       String
+  paymentStatus String      @map("payment_status")
+  orderStatus   String      @map("order_status")
+  totalAmount   Float       @map("total_amount")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  items         OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id               String @id @default(uuid())
+  orderId          String @map("order_id")
+  frameId          String @map("frame_id")
+  selectedSize     String @map("selected_size")
+  selectedMaterial String @map("selected_material")
+  selectedGlass    String @map("selected_glass")
+  selectedBorder   String @map("selected_border")
+  quantity         Int
+  price            Float
+  order            Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
+
+model AdminUser {
+  id           String @id @default(uuid())
+  username     String @unique
+  passwordHash String @map("password_hash")
+
+  @@map("admin_users")
+}
+
+model NotificationLog {
+  id        String   @id @default(uuid())
+  orderId   String   @map("order_id")
+  type      String
+  recipient String
+  status    String
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("notification_logs")
+}

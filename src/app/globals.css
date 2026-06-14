@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f8f9fa;
+  --foreground: #0a0a0a;
+  --font-sans: var(--font-outfit), var(--font-inter), system-ui, -apple-system, sans-serif;
+}
+
+@theme {
+  --color-brand-50: #fef8e7;
+  --color-brand-100: #fdf1cf;
+  --color-brand-500: #d97706;
+  --color-brand-600: #b45309;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #09090b;
+    --foreground: #fafafa;
+  }
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: col;
+}
+
+/* Out-of-the-box keyframes for custom drawer transitions */
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out forwards;
+}
+
+/* Extra texture overlays */
+.canvas-edge {
+  border-style: solid;
+  border-color: #d1c7bd;
+  box-shadow: 
+    inset 0 0 10px rgba(0,0,0,0.1),
+    10px 10px 20px rgba(0,0,0,0.2) !important;
+}
+
+.metallic {
+  background-image: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 40%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.2) 100%) !important;
+}
